@@ -32,6 +32,7 @@ extension NSUserInterfaceItemIdentifier {
 
 extension Notification.Name {
     static let reloadMainWindowTableView = Notification.Name("com.xjbeta.iina+.ReloadMainWindowTableView")
+    static let replayCacheChanged = Notification.Name("com.xjbeta.iina+.ReplayCacheChanged")
     static let sideBarSelectionChanged = Notification.Name("com.xjbeta.iina+.SideBarSelectionChanged")
     static let updateSideBarSelection = Notification.Name("com.xjbeta.iina+.updateSideBarSelection")
     static let progressStatusChanged = Notification.Name("com.xjbeta.iina+.ProgressStatusChanged")

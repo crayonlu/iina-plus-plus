@@ -544,6 +544,16 @@ extension Douyu {
 		return douyuAbsolutizePlaylist(body, url: url)
 	}
 
+	/// 某一档的全部分片地址（绝对、https）。缓存下载用。
+	func replaySegmentURLs(hashId: String, level: Int) async throws -> [String] {
+		let body = try await replayPlaylist(hashId: hashId, level: level)
+		let lines = body.split(separator: "\n")
+			.map { $0.trimmingCharacters(in: .whitespaces) }
+			.filter { !$0.isEmpty && !$0.hasPrefix("#") }
+		guard !lines.isEmpty else { throw VideoGetError.notFountData }
+		return lines
+	}
+
 	// MARK: 解码
 
 	func vodInfo(_ url: String) async throws -> DouyuVodInfo {

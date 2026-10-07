@@ -10,6 +10,7 @@ import Cocoa
 import CoreData
 import Alamofire
 import SDWebImage
+import SwiftUI
 import WebKit
 import HuyaKit
 
@@ -163,8 +164,10 @@ class MainViewController: NSViewController {
     
     var bookmarkArrayCountObserver: NSKeyValueObservation?
     
-    /// 书签右键菜单里的「直播回放」，按当前书签动态增删
+    /// 书签右键菜单里的「直播回放」「回放缓存」，按当前书签动态增删
     var douyuReplayMenuItem: NSMenuItem?
+    var replayCacheMenuItem: NSMenuItem?
+    var replayCacheHost: NSHostingController<ReplayCacheView>?
     
     var isSearching = false {
         didSet {
@@ -1216,7 +1219,7 @@ extension MainViewController {
 		return selected >= 0 && selected < bookmarks.count ? selected : -1
 	}
 
-	/// 书签右键菜单里常驻一项「直播回放」，右键的不是斗鱼直播间时隐藏。
+	/// 书签右键菜单里的「直播回放」「回放缓存」。
 	///
 	/// storyboard 里这个菜单本身没有 delegate（只有 Site / Live State 子菜单有），
 	/// 弹出时收不到 menuNeedsUpdate，所以这里既要自己补上 delegate，也要无条件装一次。
@@ -1226,25 +1229,34 @@ extension MainViewController {
 			return
 		}
 		menu.delegate = self
-		guard douyuReplayMenuItem == nil else { return }
-		let item = NSMenuItem(title: NSLocalizedString("Douyu.Replay.MenuItem", comment: "Douyu Replays"),
-							  action: #selector(douyuReplays(_:)),
-							  keyEquivalent: "")
-		item.target = self
-		menu.addItem(item)
-		douyuReplayMenuItem = item
-		Log("Douyu replay: menu item installed.")
-	}
-
-	/// 右键行不是斗鱼直播间就隐藏；判断不出来时保持可见。
-	func updateDouyuReplayMenuItem() {
-		guard let item = douyuReplayMenuItem else { return }
-		let row = clickedBookmarkRow()
-		guard row >= 0, row < bookmarks.count else {
-			item.isHidden = false
+		guard douyuReplayMenuItem == nil, replayCacheMenuItem == nil else {
+			updateDouyuReplayMenuItem()
 			return
 		}
-		item.isHidden = SupportSites(url: bookmarks[row].url) != .douyu
+		let replay = NSMenuItem(title: NSLocalizedString("Douyu.Replay.MenuItem", comment: "Douyu Replays"),
+								action: #selector(douyuReplays(_:)),
+								keyEquivalent: "")
+		replay.target = self
+		menu.addItem(replay)
+		douyuReplayMenuItem = replay
+
+		let cache = NSMenuItem(title: NSLocalizedString("ReplayCache.MenuItem", comment: "Replay Cache"),
+							   action: #selector(showReplayCache(_:)),
+							   keyEquivalent: "")
+		cache.target = self
+		menu.addItem(cache)
+		replayCacheMenuItem = cache
+		Log("Douyu replay: menu items installed.")
+	}
+
+	/// 右键行不是斗鱼直播间就隐藏「直播回放」；判断不出来时保持可见。
+	func updateDouyuReplayMenuItem() {
+		let row = clickedBookmarkRow()
+		let isDouyuRow: Bool = {
+			guard row >= 0, row < bookmarks.count else { return false }
+			return SupportSites(url: bookmarks[row].url) == .douyu
+		}()
+		douyuReplayMenuItem?.isHidden = !isDouyuRow
 	}
 
 	private func clickedBookmarkRowIfValid() -> Int? {
@@ -1262,6 +1274,27 @@ extension MainViewController {
 		Task {
 			await showDouyuReplays(url)
 		}
+	}
+
+	@objc func showReplayCache(_ sender: NSMenuItem) {
+		showReplayCache(pending: nil)
+	}
+
+	/// 切到回放列表所在的标签页
+	func showReplayBrowserTab() {
+		selectTabItem(.selectVideos)
+	}
+
+	/// 回放缓存管理（可带一个待缓存的分P，从回放列表右键进来）。
+	func showReplayCache(pending: ReplayCacheView.Pending?) {
+		guard replayCacheHost == nil else { return }
+		let host = NSHostingController(rootView: ReplayCacheView(pending: pending) { [weak self] in
+			guard let self, let host = self.replayCacheHost else { return }
+			self.replayCacheHost = nil
+			self.dismiss(host)
+		})
+		replayCacheHost = host
+		presentAsSheet(host)
 	}
 
 	/// 拉取该房间的历史直播录像，按「场次 → 分P」两层级展示在 SelectVideo 列表里。

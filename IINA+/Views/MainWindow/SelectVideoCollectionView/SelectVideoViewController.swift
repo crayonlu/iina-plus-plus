@@ -43,6 +43,7 @@ class SelectVideoViewController: NSViewController {
         outlineView.headerView = nil
         outlineView.dataSource = self
         outlineView.delegate = self
+        setupReplayCacheMenu()
     }
 
     private func buildRootItems() -> [VideoTreeNode] {
@@ -106,9 +107,114 @@ class SelectVideoViewController: NSViewController {
         }
         return s
     }
+
+    // MARK: 回放缓存右键菜单
+
+    enum ReplayCacheKind {
+        case part
+        case session
+    }
+
+    private var replayMenuInstalled = false
+    private var clickedReplayNode: VideoTreeNode?
+
+    /// 回放树的右键菜单：缓存单个分P / 缓存整场。
+    func setupReplayCacheMenu() {
+        guard !replayMenuInstalled else { return }
+        replayMenuInstalled = true
+        let menu = NSMenu()
+        for kind in [ReplayCacheKind.part, .session] {
+            let title = kind == .part
+                ? NSLocalizedString("ReplayCache.CachePart", comment: "Cache This Part…")
+                : NSLocalizedString("ReplayCache.CacheSessionPlain", comment: "Cache Whole Session…")
+            let item = NSMenuItem(title: title,
+                                  action: #selector(cacheReplay(_:)),
+                                  keyEquivalent: "")
+            item.representedObject = kind
+            item.target = self
+            menu.addItem(item)
+        }
+        menu.delegate = self
+        outlineView.menu = menu
+    }
+
+    private func updateReplayCacheMenu(_ menu: NSMenu) {
+        updateReplayCacheMenu(menu, row: clickedReplayRow())
+    }
+
+    private func updateReplayCacheMenu(_ menu: NSMenu, row: Int) {
+        clickedReplayNode = row >= 0 ? outlineView.item(atRow: row) as? VideoTreeNode : nil
+        let node = clickedReplayNode
+        for item in menu.items {
+            guard let kind = item.representedObject as? ReplayCacheKind else { continue }
+            // 默认可见：行解析失败时菜单也不能是空的；点下去时会按当时所在行重新解析
+            item.isHidden = false
+            guard let node else { continue }
+            switch kind {
+            case .part:
+                item.isHidden = !(node.isLeaf && node.site == .douyuVod)
+            case .session:
+                item.isHidden = !(!node.isLeaf && node.children.contains(where: { $0.site == .douyuVod }))
+                item.title = String(format: NSLocalizedString("ReplayCache.CacheSession", comment: "cache session (%d parts)"),
+                                    node.children.count)
+            }
+        }
+    }
+
+    /// 右键菜单弹出的行：优先鼠标所在行（outline 的 clickedRow 在这里可能拿不到），
+    /// 其次 clickedRow / 选中行。
+    private func clickedReplayRow() -> Int {
+        let mouseLocation = outlineView.window?.mouseLocationOutsideOfEventStream
+            ?? NSEvent.mouseLocation
+        let mouseRow = outlineView.row(at: outlineView.convert(mouseLocation, from: nil))
+        if mouseRow >= 0 { return mouseRow }
+        let clicked = outlineView.clickedRow
+        if clicked >= 0 { return clicked }
+        return outlineView.selectedRow
+    }
+
+    @objc func cacheReplay(_ sender: NSMenuItem) {
+        // 菜单还开着，鼠标就在那一行上：按当下位置重新解析，避免菜单打开时的解析过期
+        if clickedReplayNode == nil {
+            clickedReplayNode = outlineView.item(atRow: clickedReplayRow()) as? VideoTreeNode
+        }
+        guard let node = clickedReplayNode,
+              node.site == .douyuVod,
+              let main = parent as? MainViewController else {
+            Log("Replay cache: no douyuVod node for the clicked row.")
+            return
+        }
+        let section = outlineView.parent(forItem: node) as? VideoTreeNode
+        let sessionTitle = section?.title ?? node.title
+
+        if node.isLeaf {
+            main.showReplayCache(pending: .init(
+                sessionTitle: sessionTitle,
+                parts: [ReplayCacheView.PendingPart(
+                    hashId: node.id,
+                    partNum: node.index,
+                    durationSecs: node.duration,
+                    title: node.title)]))
+        } else {
+            main.showReplayCache(pending: .init(
+                sessionTitle: node.title,
+                parts: node.children.filter { $0.site == .douyuVod }.map {
+                    ReplayCacheView.PendingPart(hashId: $0.id,
+                                                partNum: $0.index,
+                                                durationSecs: $0.duration,
+                                                title: $0.title)
+                }))
+        }
+    }
 }
 
-extension SelectVideoViewController: NSOutlineViewDataSource, NSOutlineViewDelegate {
+extension SelectVideoViewController: NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuDelegate {
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu == outlineView.menu {
+            updateReplayCacheMenu(menu)
+        }
+    }
 
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
         if item == nil {

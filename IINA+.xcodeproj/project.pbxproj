@@ -89,6 +89,8 @@
 		018F4F662812C3EB0045B67C /* Douyu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 018F4F652812C3EB0045B67C /* Douyu.swift */; };
 		A1B2C3D4E5F60000000000003B /* DouyuReplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60000000000003A /* DouyuReplay.swift */; };
 		A1B2C3D4E5F60000000000003D /* ReplayProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60000000000003C /* ReplayProgressStore.swift */; };
+		A1B2C3D4E5F60000000000003F /* ReplayDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60000000000003E /* ReplayDownloadManager.swift */; };
+		A1B2C3D4E5F600000000000041 /* ReplayCacheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000000000040 /* ReplayCacheView.swift */; };
 		018F4F6A2812D95C0045B67C /* CC163.swift in Sources */ = {isa = PBXBuildFile; fileRef = 018F4F692812D95C0045B67C /* CC163.swift */; };
 		018F4F6C2817FFF30045B67C /* BiliLive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 018F4F6B2817FFF30045B67C /* BiliLive.swift */; };
 		01942A3227C345060092FA5A /* DouYinDMResponse.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01942A3127C345060092FA5A /* DouYinDMResponse.pb.swift */; };
@@ -295,6 +297,8 @@
 		018F4F652812C3EB0045B67C /* Douyu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Douyu.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60000000000003A /* DouyuReplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DouyuReplay.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60000000000003C /* ReplayProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplayProgressStore.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60000000000003E /* ReplayDownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplayDownloadManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F600000000000040 /* ReplayCacheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplayCacheView.swift; sourceTree = "<group>"; };
 		018F4F692812D95C0045B67C /* CC163.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CC163.swift; sourceTree = "<group>"; };
 		018F4F6B2817FFF30045B67C /* BiliLive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiliLive.swift; sourceTree = "<group>"; };
 		01942A3127C345060092FA5A /* DouYinDMResponse.pb.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DouYinDMResponse.pb.swift; sourceTree = "<group>"; };
@@ -464,6 +468,7 @@
 			children = (
 				01C248C92CE480670074A76F /* TokenBucket.swift */,
 				A1B2C3D4E5F60000000000003C /* ReplayProgressStore.swift */,
+				A1B2C3D4E5F60000000000003E /* ReplayDownloadManager.swift */,
 				01BAD2AD2B13960600A64D55 /* Extensions */,
 				018F4F5F280D89BB0045B67C /* VideoDecoder */,
 				01B090A6281CFF1B00E305B7 /* Danmaku */,
@@ -692,6 +697,7 @@
 		01B86E0B2E55843D0099C320 /* Views SwiftUI */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F600000000000040 /* ReplayCacheView.swift */,
 				015F069D2DCDC0DA00501A03 /* Preferences */,
 				01B86E0C2E5590220099C320 /* WindowManger.swift */,
 			);
@@ -967,6 +973,8 @@
 				018F4F662812C3EB0045B67C /* Douyu.swift in Sources */,
 				A1B2C3D4E5F60000000000003B /* DouyuReplay.swift in Sources */,
 				A1B2C3D4E5F60000000000003D /* ReplayProgressStore.swift in Sources */,
+				A1B2C3D4E5F60000000000003F /* ReplayDownloadManager.swift in Sources */,
+				A1B2C3D4E5F600000000000041 /* ReplayCacheView.swift in Sources */,
 				018F4F6128126FFD0045B67C /* Huya.swift in Sources */,
 				01F5151A2109F002007C7153 /* LiveStatusTableCellView.swift in Sources */,
 				014B447D210069FF00E7AA6A /* Bookmark.swift in Sources */,
