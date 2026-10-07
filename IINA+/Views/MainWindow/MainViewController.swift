@@ -1294,6 +1294,11 @@ extension MainViewController {
 			self.dismiss(host)
 		})
 		replayCacheHost = host
+		if #available(macOS 13.0, *) {
+			host.sizingOptions = [.preferredContentSize]
+		} else {
+			host.preferredContentSize = NSSize(width: 540, height: pending == nil ? 150 : 230)
+		}
 		presentAsSheet(host)
 	}
 

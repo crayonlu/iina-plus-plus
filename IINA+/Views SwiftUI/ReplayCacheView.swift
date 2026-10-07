@@ -47,18 +47,26 @@ struct ReplayCacheView: View {
 			if let pending {
 				pendingSection(pending)
 			}
-			if !items.isEmpty {
-				listSection
-			} else {
+			if items.isEmpty {
 				Text(NSLocalizedString("ReplayCache.Empty", comment: "empty cache"))
 					.foregroundStyle(.secondary)
 					.frame(maxWidth: .infinity, alignment: .center)
-					.padding(.vertical, 18)
+					.padding(.vertical, 20)
+			} else {
+				ScrollView {
+					VStack(spacing: 8) {
+						ForEach(items, id: \.id) { item in
+							row(item)
+						}
+					}
+					.padding(.vertical, 2)
+				}
+				.frame(minHeight: 96, maxHeight: 380)
 			}
 			footer
 		}
 		.padding(14)
-		.frame(minWidth: 460, minHeight: 320)
+		.frame(width: 540)
 		.task { await refresh() }
 		.onReceive(refreshPublisher) { _ in
 			Task { await refresh() }
@@ -116,16 +124,6 @@ struct ReplayCacheView: View {
 
 	// MARK: 列表
 
-	private var listSection: some View {
-		ScrollView {
-			VStack(spacing: 8) {
-				ForEach(items, id: \.id) { item in
-					row(item)
-				}
-			}
-			.padding(.vertical, 2)
-		}
-	}
 
 	private func row(_ item: ReplayDownloadManager.Item) -> some View {
 		HStack(alignment: .top, spacing: 10) {
