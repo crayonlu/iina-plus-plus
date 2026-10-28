@@ -249,7 +249,8 @@ extension SelectVideoViewController: NSOutlineViewDataSource, NSOutlineViewDeleg
             }
             let s = displayString(for: node)
             cell.textField?.stringValue = s
-            cell.textField?.toolTip = s
+            // 标题变化时用完整主题做 tooltip（单行单元格会截断）
+            cell.textField?.toolTip = node.longTitle.isEmpty ? s : node.longTitle
             return cell
         } else {
             let identifier = NSUserInterfaceItemIdentifier("SelectVideoGroupHeader")

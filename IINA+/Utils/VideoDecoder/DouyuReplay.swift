@@ -603,6 +603,29 @@ extension Douyu {
 	}
 }
 
+// MARK: - 标题处理
+
+enum DouyuReplay {
+	/// 分P 标题形如「【2026-10-27 18点场】QuQu非常规大师：绿龙 vs 老鼠 PGL直播」，
+	/// 去掉【时间】前缀后剩下的才是「这一段在播什么」——前缀每个分P 都在变，是噪音；
+	/// 真正有意义的是内容标题在同一场里可能变好几次。
+	static func stripTimePrefix(_ title: String) -> String {
+		var text = title.trimmingCharacters(in: .whitespacesAndNewlines)
+		if text.hasPrefix("【"), let end = text.firstIndex(of: "】") {
+			text = String(text[text.index(after: end)...])
+				.trimmingCharacters(in: .whitespacesAndNewlines)
+		}
+		return text
+	}
+}
+
+extension DouyuReplayPart {
+	/// 去掉时间前缀后的内容标题
+	var displayTitle: String {
+		DouyuReplay.stripTimePrefix(title)
+	}
+}
+
 // MARK: - 播放页解析
 
 extension DouyuVodPage {

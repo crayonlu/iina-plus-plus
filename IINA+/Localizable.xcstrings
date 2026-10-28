@@ -151,6 +151,23 @@
         }
       }
     },
+    "Douyu.Replay.TitleChanges" : {
+      "comment" : "title changed %d times",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "title changed ×%d"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标题变更×%d"
+          }
+        }
+      }
+    },
     "Douyu.Replay.Watched" : {
       "comment" : "Watched",
       "localizations" : {

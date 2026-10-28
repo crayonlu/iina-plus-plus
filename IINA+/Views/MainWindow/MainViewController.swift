@@ -1319,25 +1319,39 @@ extension MainViewController {
 			for session in sessions {
 				let parts = partsByShow[session.showId] ?? []
 				var leaves: [VideoTreeNode] = []
-				let items: [(hashId: String, title: String, remark: String, duration: String, durationSecs: Int, partNum: Int, cover: String)]
+				// 同一场里内容标题可能变多次（每段的赛事/主题不同）：
+				// 剥掉【时间】前缀后比较，变化的那一段标出来。
+				var previousTopic = ""
+				var changeCount = 0
 				if parts.isEmpty {
-					items = [(session.hashId, session.title, session.timeFormat, session.durationStr,
-							  session.durationSecs, 1, session.cover)]
-				} else {
-					items = parts.map { ($0.hashId, $0.title, $0.remark, $0.durationStr, $0.durationSecs, $0.partNum, $0.cover) }
-				}
-				for item in items {
-					let progress = await ReplayProgressStore.shared.refresh(id: item.hashId)
+					// 分P 没取到时，至少把这一场显示出来
 					leaves.append(VideoTreeNode(site: .douyuVod,
-												index: item.partNum,
-												title: partTitle(item.remark, item.duration, progress: progress),
-												id: item.hashId,
-												url: "https://v.douyu.com/show/\(item.hashId)",
-												coverUrl: URL(string: item.cover),
-												duration: item.durationSecs))
+												index: 1,
+												title: "\(session.timeFormat) · \(session.durationStr)",
+												id: session.hashId,
+												url: "https://v.douyu.com/show/\(session.hashId)",
+												coverUrl: URL(string: session.cover),
+												duration: session.durationSecs))
+				} else {
+					for part in parts {
+						let topic = part.displayTitle
+						let changed = !topic.isEmpty && !previousTopic.isEmpty && topic != previousTopic
+						if changed { changeCount += 1 }
+						if !topic.isEmpty { previousTopic = topic }
+						let progress = await ReplayProgressStore.shared.refresh(id: part.hashId)
+						leaves.append(VideoTreeNode(site: .douyuVod,
+												index: part.partNum,
+												title: partTitle(part, topicChanged: changed, progress: progress),
+												id: part.hashId,
+												url: "https://v.douyu.com/show/\(part.hashId)",
+												coverUrl: URL(string: part.cover),
+												duration: part.durationSecs,
+												longTitle: changed ? topic : ""))
+					}
 				}
 				guard !leaves.isEmpty else { continue }
-				nodes.append(VideoTreeNode(title: sessionTitle(session), children: leaves))
+				nodes.append(VideoTreeNode(title: sessionTitle(session, parts: parts, changeCount: changeCount),
+										  children: leaves))
 			}
 			guard !nodes.isEmpty else { throw VideoGetError.douyuReplayEmpty }
 			showSelectVideo("", treeNodes: nodes, currentItem: 0)
@@ -1378,40 +1392,56 @@ extension MainViewController {
 		return result
 	}
 
-	private func sessionTitle(_ session: DouyuReplaySession) -> String {
-		var parts: [String] = []
+	/// 场次标题：时间 · 段数 · 标题变更次数 · 起始主题
+	/// （单元格是单行、尾部截断，所以把「标题变更」放在主题前面）
+	private func sessionTitle(_ session: DouyuReplaySession, parts: [DouyuReplayPart], changeCount: Int) -> String {
+		var comps: [String] = []
 		if session.recordedAt > 0 {
 			let formatter = DateFormatter()
 			formatter.dateFormat = "MM-dd HH:mm"
-			parts.append(formatter.string(from: Date(timeIntervalSince1970: TimeInterval(session.recordedAt))))
-		}
-		parts.append(session.title)
-		if !session.durationStr.isEmpty {
-			parts.append(session.durationStr)
+			comps.append(formatter.string(from: Date(timeIntervalSince1970: TimeInterval(session.recordedAt))))
 		}
 		if session.partCount > 1 {
-			parts.append("\(session.partCount)P")
+			comps.append("\(session.partCount)P")
 		}
-		return parts.joined(separator: " · ")
+		if changeCount > 0 {
+			comps.append(String(format: NSLocalizedString("Douyu.Replay.TitleChanges", comment: "title changed %d times"),
+								changeCount))
+		}
+		let topic = parts.first?.displayTitle ?? DouyuReplay.stripTimePrefix(session.title)
+		if !topic.isEmpty {
+			comps.append(topic)
+		}
+		if !session.durationStr.isEmpty {
+			comps.append(session.durationStr)
+		}
+		return comps.joined(separator: " · ")
 	}
 
-	private func partTitle(_ remark: String, _ duration: String, progress: ReplayProgressStore.Progress?) -> String {
-		var parts: [String] = []
-		if !remark.isEmpty {
-			parts.append(remark)
+	/// 分P 标题：P(x) 时段 · 时长 ·（标题变了则带上新主题）· 进度
+	private func partTitle(_ part: DouyuReplayPart, topicChanged: Bool, progress: ReplayProgressStore.Progress?) -> String {
+		var comps: [String] = ["P\(part.partNum)"]
+		if !part.remark.isEmpty {
+			comps.append(part.remark)
 		}
-		if !duration.isEmpty {
-			parts.append(duration)
+		if !part.durationStr.isEmpty {
+			comps.append(part.durationStr)
+		}
+		if topicChanged {
+			let topic = part.displayTitle
+			if !topic.isEmpty {
+				comps.append("✎ " + (topic.count > 26 ? String(topic.prefix(26)) + "…" : topic))
+			}
 		}
 		if let progress {
 			if progress.completed {
-				parts.append(NSLocalizedString("Douyu.Replay.Watched", comment: "Watched"))
+				comps.append(NSLocalizedString("Douyu.Replay.Watched", comment: "Watched"))
 			} else if progress.duration > 0, progress.position > 0 {
 				let percent = min(99, Int(progress.position / progress.duration * 100))
-				parts.append(String(format: NSLocalizedString("Douyu.Replay.Progress", comment: "Progress %d%%"), percent))
+				comps.append(String(format: NSLocalizedString("Douyu.Replay.Progress", comment: "Progress %d%%"), percent))
 			}
 		}
-		return parts.joined(separator: " · ")
+		return comps.joined(separator: " · ")
 	}
 
 	private func showDouyuReplayAlert(_ error: any Error) {
