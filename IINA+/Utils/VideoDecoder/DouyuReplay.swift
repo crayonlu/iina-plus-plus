@@ -16,6 +16,7 @@ private let vodShowEndpoint = "https://v.douyu.com/show/"
 private let vodListEndpoint = "https://v.douyu.com/wgapi/vod/center/authorShowVideoList"
 private let vodPartsEndpoint = "https://v.douyu.com/wgapi/vod/center/getShowReplayList"
 private let vodStreamEndpoint = "https://v.douyu.com/wgapi/vodnc/front/stream/getStreamUrlWeb"
+private let vodBarrageEndpoint = "https://v.douyu.com/wgapi/vod/center/getBarrageList"
 
 /// 回放接口对 did 无校验，沿用与直播签名相同的匿名 did。
 private let vodDID = "10000000000000000000000000001501"
@@ -349,6 +350,43 @@ private func douyuAbsolutizePlaylist(_ body: String, url: String) -> String {
 	return lines.joined(separator: "\n")
 }
 
+// MARK: - 回放弹幕
+
+/// 回放里的一条弹幕（就是当时直播间的聊天，录制下来的）。
+struct DouyuReplayDanmaku: Sendable {
+	var text: String
+	/// 弹幕在视频里的时间轴（毫秒）
+	var timeMs: Int
+	/// 斗鱼的颜色码
+	var colorCode: Int
+	/// 发送时间（unix 秒）
+	var date: Int
+	/// 用户 hash
+	var hash: String
+	/// 弹幕 id
+	var id: String
+
+	/// 转成插件（CommentCoreLibrary）认识的十进制 RGB
+	var rgbColor: Int {
+		switch colorCode {
+		case 1: return 0x0000FF		// 蓝
+		case 2: return 0x00FF00		// 绿
+		case 3: return 0xFFFF00		// 黄
+		case 4: return 0xFF0000		// 红
+		case 5: return 0xFF00FF		// 紫
+		case 6: return 0xFF8000		// 橙
+		case 7: return 0x00FFFF		// 青
+		case 8: return 0xFF69B4		// 粉
+		case 9: return 0xFFD700		// 金
+		case 10: return 0x00CED1	// 深青
+		case 11: return 0x8A2BE2	// 蓝紫
+		case 12: return 0xDC143C	// 绯红
+		case 13: return 0x228B22	// 墨绿
+		default: return 0xFFFFFF	// 普通弹幕是白色
+		}
+	}
+}
+
 // MARK: - 回放接口
 
 extension Douyu {
@@ -552,6 +590,39 @@ extension Douyu {
 			.filter { !$0.isEmpty && !$0.hasPrefix("#") }
 		guard !lines.isEmpty else { throw VideoGetError.notFountData }
 		return lines
+	}
+
+	/// 拉取某个分P 的全部弹幕（当时直播间的聊天）。
+	///
+	/// getBarrageList 以毫秒时间轴为游标：传 start_time 拿下一段，每段最多 500 条，
+	/// 最后一段的 end_time 是 -1。只靠 vid（分P 的 hash_id）就能取到。
+	func replayDanmaku(hashId: String, maxPages: Int = 60) async throws -> [DouyuReplayDanmaku] {
+		var result: [DouyuReplayDanmaku] = []
+		var cursor = 0
+		for _ in 0..<maxPages {
+			let data = try await AF.request(vodBarrageEndpoint,
+										  parameters: ["vid": hashId, "start_time": cursor])
+				.serializingData().value
+			let json = try JSONParser.JSONObjectWithData(data)
+			guard douyuInt(json["error"]) == 0, let payload = json["data"] as? [String: Any] else { break }
+			let list = payload["list"] as? [[String: Any]] ?? []
+			if list.isEmpty { break }
+			for item in list {
+				let text = douyuText(item["ctt"])
+				guard !text.isEmpty else { continue }
+				result.append(DouyuReplayDanmaku(text: text,
+												  timeMs: douyuInt(item["tl"]),
+												  colorCode: douyuInt(item["col"]),
+												  date: douyuInt(item["sts"]),
+												  hash: douyuText(item["mid"]),
+												  id: douyuText(item["sid"])))
+			}
+			let end = douyuInt(payload["end_time"])
+			guard end > cursor else { break }
+			cursor = end
+		}
+		Log("Douyu replay \(hashId): \(result.count) danmaku.")
+		return result
 	}
 
 	// MARK: 解码

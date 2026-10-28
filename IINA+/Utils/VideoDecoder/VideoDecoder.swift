@@ -102,24 +102,68 @@ actor VideoDecoder {
 	
 	func prepareDanmakuFile(yougetJSON: YouGetJSON, id: String) async throws {
 		let pref = Preferences.shared
-		
+
 		guard await Processes.shared.iina.archiveType != .normal,
 			  pref.enableDanmaku,
 			  pref.livePlayer == .iina,
-			  [.bilibili, .bangumi, .local].contains(yougetJSON.site),
 			  yougetJSON.id != -1 else {
 				  Log("Ignore Danmaku download.")
 				  return
 		}
-  
-//        return self.downloadDMFile(yougetJSON.id, id: id)
-		
+
+		if yougetJSON.site == .douyuVod {
+			// 斗鱼回放：把当时直播间的聊天取回来，按时间轴写成弹幕文件交给插件
+			guard let hashId = DouyuReplayURL.hashId(from: yougetJSON.rawUrl) else { return }
+			let danmaku = try await douyu.replayDanmaku(hashId: hashId)
+			guard !danmaku.isEmpty else {
+				Log("Douyu replay \(hashId): no danmaku.")
+				return
+			}
+			VideoDecoder.saveDMFile(VideoDecoder.douyuDanmakuXML(danmaku), with: id)
+			return
+		}
+
+		guard [.bilibili, .bangumi, .local].contains(yougetJSON.site) else {
+			Log("Ignore Danmaku download.")
+			return
+		}
+
 		try await downloadDMFileV2(
 			cid: yougetJSON.id,
 			length: yougetJSON.duration,
 			id: id)
 	}
-    
+
+	/// 把斗鱼回放弹幕转成插件（CommentCoreLibrary）能吃的 bilibili XML 格式。
+	/// p 字段：时间(秒), 模式, 字号, 颜色(十进制 RGB), 发送时间, 池, 用户 hash, 弹幕 id
+	static func douyuDanmakuXML(_ danmaku: [DouyuReplayDanmaku]) -> Data? {
+		guard let element = try? XMLElement(xmlString: #"<?xml version="1.0" encoding="UTF-8"?><i><chatserver>chat.bilibili.tv</chatserver><chatid>170102</chatid></i>"#) else {
+			return nil
+		}
+		let doc = XMLDocument(rootElement: element)
+		for dm in danmaku {
+			let p = ["\(Double(dm.timeMs) / 1000)",
+					 "1",			// 模式：滚动
+					 "25",			// 字号
+					 "\(dm.rgbColor)",
+					 "\(dm.date)",
+					 "0",			// pool
+					 dm.hash,
+					 dm.id].joined(separator: ",")
+			var text = dm.text
+			text = text.replacingOccurrences(of: "<", with: "&lt;")
+			text = text.replacingOccurrences(of: ">", with: "&gt;")
+			text = text.replacingOccurrences(of: "&", with: "&amp;")
+			text = text.replacingOccurrences(of: "'", with: "&apos;")
+			text = text.replacingOccurrences(of: "\"", with: "&quot;")
+			text = text.replacingOccurrences(of: "`", with: "&apos;")
+
+			if let node = try? XMLElement(xmlString: "<d p=\"\(p)\">\(text)</d>") {
+				element.addChild(node)
+			}
+		}
+		return doc.xmlData
+	}
 	func prepareVideoUrl(_ json: YouGetJSON, _ key: String) async throws -> YouGetJSON {
 		
 		guard json.id != -1 else {
