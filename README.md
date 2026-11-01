@@ -1,72 +1,41 @@
-# IINA+
+# IINA++
 
-## IINA+ is a tiny macOS application to ?.
+IINA++ 是 [IINA+](https://github.com/xjbeta/iina-plus) 的增强分支，聚焦**斗鱼**平台的直播回放体验。工程与 App 产物仍沿用 IINA+ 的命名与 bundle id，可直接在上游基础上构建使用。
 
-![](https://i.loli.net/2018/10/30/5bd83a7952437.gif)
+## 相对 IINA+ 的扩展
 
+### 1. 斗鱼回放（直播录像）
 
-## Download & Guide
+- **回放链接直接播放**：粘贴 `https://v.douyu.com/show/{id}` 即可解码播放；清晰度逐档原样列出（原画2K60 / 高清1080P60 / 高清720P / 标清480P…），不合并、不改名。
+- **直播间回放浏览**：斗鱼直播间书签右键 →「直播回放」，按「场次 → 分P」展开最近 20 场录像。
+- **标题变更标注**：同一场里主题可能变多次；剥掉「【时间】」前缀后逐段比较，变化的分P 标 `✎` 和新主题，场次行标注「标题变更×N」，完整标题放在 tooltip。
+- **连播与断点续播**：从某个分P 点开会顺序播完该场剩余分P；进度按分P 记录（IINA 的 watch_later），列表里显示「已看 62%」「已看完」，看完的再点从头播。
+- 播放列表由本地路由按需现签后交给播放器：分片直连 CDN，签名临用临生成，规避长场次播到后半段时地址过期。
 
-- ### [IINA-plus Releases](https://github.com/xjbeta/iina-plus/releases)
-- ### [Danmaku Guide](https://github.com/xjbeta/iina-plus/wiki/1.-%E6%97%A0%E8%84%91%E6%95%99%E7%A8%8B)
+### 2. 回放缓存（离线保存）
 
+- 回放列表里右键某个分P →「缓存该分P…」，或右键场次 →「缓存整场…」，选清晰度后开始缓存。
+- 分片 3 路并发直连 CDN，地址失效自动重签重试，按分片断点续传；完成后拼成单个 `.ts` 文件，IINA 可直接播放。
+- 书签右键「回放缓存」打开管理面板：进度、大小、播放本地文件、逐条删除、一键清空。
+- 缓存位置：`~/Library/Application Support/<bundle-id>/ReplayCache/`。
 
-## Support Status
+### 3. 回放弹幕
 
-<!--https://www.tablesgenerator.com/markdown_tables#-->
+- 斗鱼把当时的直播聊天录在回放里（`v.douyu.com/wgapi/vod/center/getBarrageList`，按毫秒时间轴分页，每页 500 条）。
+- 播放分P 时自动取回该分P 的全部弹幕，转成弹幕插件识别的 XML，按播放进度渲染；颜色沿用斗鱼的颜色码。
+- 依赖上游的弹幕插件，并需在设置里打开「启用弹幕」、播放器选 IINA。
 
-| website       | live status | video decode | danmaku |
-|---------------|-------------|--------------|---------|
-| bilibili      | -           | ✓            | ✓       |
-| bangumi       | -           | ✓            | ✓       |
-| bililive      | ✓           | ✓            | ✓       |
-| douyu         | ✓           | ✓            | ✓       |
-| huya          | ✓           | ✓            | ✓       |
-| douyin        | ✓           | ✓            | ✓       |
-| cc.163        | ✓           | ✓            | ✕       |
-| live.qq       | ✓           | ✓            | ✕       |
+## 其它 fork 改动（分支，未合并）
 
+- `fix/douyu-stream-refresh`：斗鱼直播取流改走本地中转、按需重签（对应无登录时直播流约 5 分钟失效的问题）；保留斗鱼标题到 IINA 的 Now Playing。
 
-## Build
+## 构建
 
-##### Xcode Version: Latest Release
+与上游一致：
 
-```
-git clone https://github.com/xjbeta/iina-plus
-cd iina-plus
+```bash
 bash InstallDeps.sh
+open IINA+.xcodeproj
 ```
 
-Open `IINA+.xcodeproj` with Xcode.
-
-## Acknowledgements
-
-### Librarys
-
-- [Alamofire](https://github.com/Alamofire/Alamofire)
-- [CryptoSwift](https://github.com/krzyzanowskim/CryptoSwift)
-- [GzipSwift](https://github.com/1024jp/GzipSwift)
-- [Marshal](https://github.com/utahiosmac/Marshal)
-- [SDWebImage](https://github.com/SDWebImage/SDWebImage)
-- [SocketRocket with SPM patch](https://github.com/xjbeta/SocketRocket)
-- [Sparkle](https://github.com/sparkle-project/Sparkle)
-- [SwiftBrotli](https://github.com/f-meloni/SwiftBrotli)
-- [swifter](https://github.com/httpswift/swifter)
-- [swift-protobuf](https://github.com/apple/swift-protobuf)
-- [SwiftSoup](https://github.com/scinfu/SwiftSoup)
-
-
-
-### Web Librarys
-
-- [CommentCoreLibrary](https://github.com/jabbany/CommentCoreLibrary)
-- [mpegts.js](https://github.com/xqq/mpegts.js)
-
-
-### Sidebar Icons
-
-- [@freepik](https://www.flaticon.com/authors/freepik)
-
-
-## Donate
-<img src="IINA+/Assets/Assets.xcassets/WX_Payment.imageset/WX_Payment.jpg" width="320"/>
+下载、使用说明、支持列表与致谢见上游 [IINA+](https://github.com/xjbeta/iina-plus) 的 README 与 Wiki。
