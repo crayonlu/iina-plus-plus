@@ -102,6 +102,8 @@ actor VideoDecoder {
 	
 	func prepareDanmakuFile(yougetJSON: YouGetJSON, id: String) async throws {
 		let pref = Preferences.shared
+		// archiveType 只在 openWithPlayer 里刷新，首次播放前还是 .none，会把弹幕整个跳过。
+		await Processes.shared.iina.updateIINAState()
 
 		guard await Processes.shared.iina.archiveType != .normal,
 			  pref.enableDanmaku,
@@ -114,7 +116,17 @@ actor VideoDecoder {
 		if yougetJSON.site == .douyuVod {
 			// 斗鱼回放：把当时直播间的聊天取回来，按时间轴写成弹幕文件交给插件
 			guard let hashId = DouyuReplayURL.hashId(from: yougetJSON.rawUrl) else { return }
-			let danmaku = try await douyu.replayDanmaku(hashId: hashId)
+			// 弹幕接口偶发失败时重试，失败也不阻止视频播放。
+			var danmaku: [DouyuReplayDanmaku] = []
+			for attempt in 1...3 {
+				do {
+					danmaku = try await douyu.replayDanmaku(hashId: hashId)
+					if !danmaku.isEmpty { break }
+				} catch {
+					Log("Douyu replay \(hashId): danmaku attempt \(attempt) failed, \(error)")
+				}
+				try? await Task.sleep(nanoseconds: 500_000_000)
+			}
 			guard !danmaku.isEmpty else {
 				Log("Douyu replay \(hashId): no danmaku.")
 				return
